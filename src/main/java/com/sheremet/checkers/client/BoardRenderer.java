@@ -55,4 +55,11 @@ public class BoardRenderer{
 			StdDraw.filledCircle(x, y, 0.2);
 		}
 	}
+
+	public void showMsg(String msg) {
+		StdDraw.setPenColor(Color.DARK_GRAY);
+		StdDraw.filledRectangle(4, 4, 4, 1);
+		StdDraw.setPenColor(Color.WHITE);
+		StdDraw.text(4, 4, msg);
+	}
 }

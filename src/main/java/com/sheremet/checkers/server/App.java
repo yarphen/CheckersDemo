@@ -1,6 +1,7 @@
 package com.sheremet.checkers.server;
 
 import checkers.server.Main;
+import checkers.server.Server;
 
 /**
  * Hello world!
@@ -8,8 +9,8 @@ import checkers.server.Main;
  */
 public class App 
 {
-    public static void main( String[] args )
-    {
-    	Main.main(args);
+	public static void main(String[] args){
+        Server server = new Server(5000);
+        server.run();
     }
 }

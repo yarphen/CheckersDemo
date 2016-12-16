@@ -16,8 +16,7 @@ import checkers.pojo.step.Step;
 
 public class MinimaxSolver implements Solver {
 
-	private static final long LIMIT = 5000000000L;
-	private static final long SEARCHLIMIT = 300;
+	public static final long DEFAULT_LIMIT = 4800000000L;
 	private final Comparator<Map.Entry<Step, Board>> ASCENDING = new Comparator<Map.Entry<Step,Board>>() {
 		@Override
 		public int compare(Entry<Step, Board> o1, Entry<Step, Board> o2) {
@@ -34,11 +33,14 @@ public class MinimaxSolver implements Solver {
 	};
 	private StepCollector stepCollector = new StepCollector();
 	private Euristics euristics = new Euristics();
-	private int depth;
 	private int solveCounter;
 	private int maxdepth;
-	public MinimaxSolver(int depth) {
-		this.depth = depth;
+	private long timelimit;
+	public MinimaxSolver() {
+		this(DEFAULT_LIMIT);
+	}
+	public MinimaxSolver(long timelimit) {
+		this.timelimit = timelimit;
 	}
 	@Override
 	public Step solve(Board board) {
@@ -46,7 +48,7 @@ public class MinimaxSolver implements Solver {
 		maxdepth = 0;
 		long startTime = System.currentTimeMillis();
 		Step step = null;
-		List<Step> foundSteps = findMiniMaxSolution(board, LIMIT).getValue();
+		List<Step> foundSteps = findMiniMaxSolution(board, 0, timelimit).getValue();
 		if (!foundSteps.isEmpty()){
 			step = foundSteps.get(0);
 		}
@@ -59,7 +61,11 @@ public class MinimaxSolver implements Solver {
 	}
 	private Map.Entry<Integer, List<Step>> findMiniMaxSolution(
 			Board board,
+			int currentDepth,
 			long limit) {
+		if(currentDepth>maxdepth){
+			maxdepth = currentDepth;
+		}
 		long startTime =  System.nanoTime();
 		long endTime = startTime + limit;
 		List<Step> currentLevelSteps = stepCollector.getSteps(board);
@@ -94,7 +100,8 @@ public class MinimaxSolver implements Solver {
 			if (miniMax==null){
 				step = stepEntry.getKey();
 				if (!timedOut){
-					miniMax = findMiniMaxSolution(newBoard,  
+					miniMax = findMiniMaxSolution(newBoard,
+							currentDepth+1,
 							(int)((endTime-System.nanoTime())/
 									gotVariantsCount));
 				}else{
@@ -108,6 +115,7 @@ public class MinimaxSolver implements Solver {
 				Entry<Integer,List<Step>> alter;
 				if (!timedOut){
 					alter = findMiniMaxSolution(newBoard, 
+							currentDepth+1,
 							(int)((endTime-System.nanoTime())/
 									gotVariantsCount));
 				}else{

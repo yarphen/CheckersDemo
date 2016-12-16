@@ -13,7 +13,7 @@ public class Bot1 {
         int port = 3000;
         String ip = "localhost";
         Client client = new Client(ip, port,// new FirstStepBot("bot1",new BoardRenderer()));
-        		new SolverBot("bot1", new BoardRenderer(), new MinimaxSolver(10)));
+        		new SolverBot("sheremet", new BoardRenderer(), new MinimaxSolver()));
         client.run();
     }
 

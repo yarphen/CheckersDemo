@@ -4,30 +4,28 @@ import java.util.stream.Collectors;
 
 import checkers.pojo.board.Board;
 import checkers.pojo.checker.Checker;
+import checkers.pojo.checker.CheckerColor;
 
 public class Euristics {
 	public int rateBoard(Board board){
-		return (int) board.getCheckers().stream().collect(Collectors.summarizingInt(checker->{
-			int rate = this.rateChecker(checker);
-			//System.out.print("rate: "+rate+" ");
-			return rate;
-		})).getSum();
+		double whiteSum = board.get(CheckerColor.WHITE).stream().collect(Collectors.summarizingInt(this::rateChecker)).getSum();
+		double blackSum = board.get(CheckerColor.BLACK).stream().collect(Collectors.summarizingInt(this::rateChecker)).getSum();
+		double sign = (int) Math.signum(whiteSum-blackSum);
+		double min = Math.min(blackSum, whiteSum);
+		double max = Math.max(blackSum, whiteSum);
+		int rate = (int) ( sign * (1.0 - min / max) * 100.0);
+		return rate;
 	}
 	private int rateChecker(Checker checker){
 		switch (checker.getType()) {
 		case QUEEN:
-			switch (checker.getColor()) {
-			case BLACK:
-				return -5;
-			case WHITE:
-				return 5;
-			}
+			return 20;
 		case SIMPLE:
 			switch (checker.getColor()) {
 			case BLACK:
-				return -1;
+				return 9-checker.getPosition().getY();
 			case WHITE:
-				return 1;
+				return checker.getPosition().getY();
 			}
 		default:
 			throw new IllegalArgumentException();

@@ -10,10 +10,10 @@ public class Bot1 {
 	 * @param args
 	 */
     public static void main(String[] args){
-        int port = 5000;
+        int port = 3000;
         String ip = "localhost";
         Client client = new Client(ip, port,// new FirstStepBot("bot1",new BoardRenderer()));
-        		new SolverBot("bot1", new BoardRenderer(), new MinimaxSolver(5)));
+        		new SolverBot("bot1", new BoardRenderer(), new MinimaxSolver(10)));
         client.run();
     }
 

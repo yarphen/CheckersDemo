@@ -31,6 +31,7 @@ public class FirstStepBot implements CheckersBot{
 	}
 
 	public Step next(Board board) {
+		board = board.clone();
 		List<Checker> myCheckers = board.get(color);
 		Step finalStep = null;
 		outer:for(Checker checker:myCheckers){
@@ -40,47 +41,10 @@ public class FirstStepBot implements CheckersBot{
 						try{
 							Position p = new Position(x, y);
 							StepUnit stepUnit = new StepUnit(checker.getPosition(), p);
-							Step step = finalStep!=null?finalStep:new Step();
+							Step step = new Step();
 							step.addStep(stepUnit);
 							if (new Validator().isValidStep(board, step, color)){
-								try{
-									board.apply(step);
-								}catch(IllegalArgumentException e){
-									if (e.getCause() instanceof DoOneMoreStepException){
-										inner:while(true){
-											for(int x1=1; x1<=8; x1++){
-												for(int y1=1; y1<=8; y1++){
-													if ((x+y)%2==0){
-														try{
-															Position p1 = new Position(x1, y1);
-															StepUnit stepUnit1 = new StepUnit(step.getSteps().get(step.getSteps().size()-1).getTo(), p1);
-															step.addStep(stepUnit1);
-															if (new Validator().isValidStep(board, step, color)){
-																try{
-																	board.apply(step);
-																	break inner;
-																}catch(IllegalArgumentException e2){
-																	if (e2.getCause() instanceof DoOneMoreStepException){
-																		continue inner;
-																	}else{
-																		throw e2;
-																	}
-																}
-															}else{
-																step.getSteps().remove(step.getSteps().size()-1);
-															}
-														}catch(IllegalArgumentException e2){
-															step.getSteps().remove(step.getSteps().size()-1);
-														}
-													}
-												}
-											}
-											break outer;
-										}
-									}else{
-										throw e;
-									}
-								}
+								board.apply(step);
 								finalStep = step;
 								break outer;
 							}

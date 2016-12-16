@@ -1,146 +1,143 @@
 package com.sheremet.checkers.client;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import javax.media.j3d.Link;
-
 import checkers.pojo.board.Board;
-import checkers.pojo.checker.Checker;
+import checkers.pojo.board.StepCollector;
 import checkers.pojo.checker.CheckerColor;
 import checkers.pojo.step.Step;
-import edu.princeton.cs.introcs.In;
 
 public class MinimaxSolver implements Solver {
 
-	private static final long LIMIT = 5000;
+	private static final long LIMIT = 5000000000L;
+	private static final long SEARCHLIMIT = 300;
+	private final Comparator<Map.Entry<Step, Board>> ASCENDING = new Comparator<Map.Entry<Step,Board>>() {
+		@Override
+		public int compare(Entry<Step, Board> o1, Entry<Step, Board> o2) {
+			int rate1 = euristics.rateBoard(o1.getValue());
+			int rate2 = euristics.rateBoard(o2.getValue());
+			return Integer.compare(rate1, rate2);
+		}
+	};
+	private final Comparator<Map.Entry<Step, Board>> DESCENDING = new Comparator<Map.Entry<Step,Board>>() {
+		@Override
+		public int compare(Entry<Step, Board> o1, Entry<Step, Board> o2) {
+			return -ASCENDING.compare(o1, o2);
+		}
+	};
 	private StepCollector stepCollector = new StepCollector();
 	private Euristics euristics = new Euristics();
 	private int depth;
+	private int solveCounter;
+	private int maxdepth;
 	public MinimaxSolver(int depth) {
 		this.depth = depth;
 	}
 	@Override
 	public Step solve(Board board) {
-
+		solveCounter = 0;
+		maxdepth = 0;
 		long startTime = System.currentTimeMillis();
-		Step step =  findMiniMaxSolution(board, depth, LIMIT).getValue().get(0);
+		Step step = null;
+		List<Step> foundSteps = findMiniMaxSolution(board, LIMIT).getValue();
+		if (!foundSteps.isEmpty()){
+			step = foundSteps.get(0);
+		}
 		System.out.println("Time:"+(System.currentTimeMillis()-startTime));
+		System.out.println("SolveCounter:"+solveCounter);
+		System.out.println("maxdepth:"+maxdepth);
+		solveCounter = 0;
+		maxdepth = 0;
 		return step;
 	}
-	private Map.Entry<Integer, List<Step>> findMiniMaxSolution(Board board, int depth, long limit){
-		long endTime = System.currentTimeMillis()+ limit;
-		List<Entry<Step, Board>> currentLevelSteps = stepCollector.getSteps(board, board.getTurnColor()) ;
+	private Map.Entry<Integer, List<Step>> findMiniMaxSolution(
+			Board board,
+			long limit) {
+		long startTime =  System.nanoTime();
+		long endTime = startTime + limit;
+		List<Step> currentLevelSteps = stepCollector.getSteps(board);
+		int gotVariantsCount = currentLevelSteps.size();
 		if (currentLevelSteps.isEmpty()){
-			switch (board.getTurnColor()) {
-			case BLACK:
-				return new MyEntry<Integer, List<Step>>(100, new LinkedList<Step>());
-			case WHITE:
-				return new MyEntry<Integer, List<Step>>(-100, new LinkedList<Step>());
-			default:
-				break;
+			if (board.get(board.getTurnColor()).isEmpty()){
+				if (board.getTurnColor()==CheckerColor.BLACK){
+					return new MyEntry<Integer, List<Step>>(100, new LinkedList<Step>());
+				}else{
+					return new MyEntry<Integer, List<Step>>(-100, new LinkedList<Step>());
+				}
+			}else{
+				return new MyEntry<Integer, List<Step>>(0, new LinkedList<Step>());
 			}
 		}
-		System.out.println(board);
-		System.out.println("Found "+currentLevelSteps.size()+"turns.");
-		System.out.println("DEPTH: "+depth+"{");
-		if (depth==1){
-			Step bestStep = null;
-			Integer miniMax = null;
-			for(Entry<Step, Board> stepEntry:currentLevelSteps){
-				Step step = stepEntry.getKey();
-				Board newBoard = stepEntry.getValue();
-				System.out.println(newBoard);
-				if (miniMax==null){
-					bestStep = step;
-					miniMax = euristics.rateBoard(newBoard) ;
-					System.out.println("Rating: "+miniMax);
+		Entry<Integer,List<Step>> miniMax = null;
+		Step step = null;
+		boolean timedOut = false;
+		List<Map.Entry<Step, Board>> listOfResultEntries = new ArrayList<Map.Entry<Step, Board>>();
+		currentLevelSteps.forEach(step1->{
+			Board newBoard = board.clone();
+			newBoard.apply(step1);
+			listOfResultEntries.add(new MyEntry<Step, Board>(step1,newBoard));
+		});
+		Comparator<Map.Entry<Step, Board>> comparator = null;
+		comparator = (board.getTurnColor()==CheckerColor.WHITE)?DESCENDING:ASCENDING;
+		Collections.sort(listOfResultEntries, comparator);
+		for(Map.Entry<Step, Board> stepEntry:listOfResultEntries){
+			if (!timedOut&&System.nanoTime()>=endTime){
+				timedOut = true;				}
+			Board newBoard = stepEntry.getValue();
+			if (miniMax==null){
+				step = stepEntry.getKey();
+				if (!timedOut){
+					miniMax = findMiniMaxSolution(newBoard,  
+							(int)((endTime-System.nanoTime())/
+									gotVariantsCount));
+				}else{
+					miniMax = new MyEntry<Integer, List<Step>>(
+							euristics.rateBoard(newBoard),
+							new LinkedList<Step>());
+					solveCounter++;
+				}
 
+			}else{
+				Entry<Integer,List<Step>> alter;
+				if (!timedOut){
+					alter = findMiniMaxSolution(newBoard, 
+							(int)((endTime-System.nanoTime())/
+									gotVariantsCount));
 				}else{
-					Integer currentRate = euristics.rateBoard(newBoard) ;
-					System.out.println("Rating: "+currentRate);
-					if (board.getTurnColor()==CheckerColor.BLACK){
-						if (currentRate < miniMax){
-							System.out.println("BLACK MINIMAX FOUND");
-							miniMax = currentRate;
-							bestStep = step;
-						}
-					}else{
-						if (currentRate > miniMax){
-							System.out.println("WHITE MINIMAX FOUND");
-							miniMax = currentRate;
-							bestStep = step;
-						}
+					alter = new MyEntry<Integer, List<Step>>(
+							euristics.rateBoard(newBoard),
+							new LinkedList<Step>());
+					solveCounter++;
+				}
+				if (board.getTurnColor()==CheckerColor.BLACK){
+					if (alter.getKey() < miniMax.getKey()){
+						miniMax = alter;
+						step = stepEntry.getKey();
+					}
+				}else{
+					if (alter.getKey() > miniMax.getKey()){
+						miniMax = alter;
+						step = stepEntry.getKey();
 					}
 				}
-				if (System.currentTimeMillis()>endTime)break;
 			}
-			LinkedList<Step> newList = new LinkedList<Step>();
-			newList.add(bestStep);
-			return new MyEntry<Integer, List<Step>>(miniMax, newList);
-		}else{
-			Entry<Integer,List<Step>> miniMax = null;
-			Step step = null;
-			for(Entry<Step, Board> stepEntry:currentLevelSteps){
-				Board newBoard = stepEntry.getValue();
-				System.out.println(newBoard);
-				if (miniMax==null){
-					step = stepEntry.getKey();
-					miniMax = findMiniMaxSolution(newBoard, depth-1, limit/currentLevelSteps.size());
-					System.out.println("Total rating: "+miniMax.getKey());
-				}else{
-					Entry<Integer,List<Step>> alter = findMiniMaxSolution(newBoard, depth-1,limit/currentLevelSteps.size());
-					System.out.println("Total rating: "+alter.getKey());
-					if (board.getTurnColor()==CheckerColor.BLACK){
-						if (alter.getKey() < miniMax.getKey()){
-							System.out.println("BLACK MINIMAX FOUND");
-							miniMax = alter;
-							step  = stepEntry.getKey();
-						}
-					}else{
-						System.out.println(alter);
-						System.out.println(miniMax);
-						if (alter.getKey() > miniMax.getKey()){
-							System.out.println("WHITE MINIMAX FOUND");
-							miniMax = alter;
-							step  = stepEntry.getKey();
-						}
-					}
-				}
-				if (System.currentTimeMillis()>endTime)break;
-			}
-			miniMax.getValue().add(0,step);
-			System.out.println("} DEPTH: "+depth);
-			return miniMax;
+
 		}
+		miniMax.getValue().add(0,step);
+		return miniMax;
+	}
+	private String indent(int i) {
+		char[] chars = new char[i];
+		Arrays.fill(chars, '\t');
+		String text = new String(chars);
+		return text;
 	}
 }
-class MyEntry<K,V> implements Map.Entry<K,V>{
-	private final K key;
-	private V value;
-	public MyEntry(K k, V v) {
-		key = k;
-		value = v;
-	}
 
-	@Override
-	public K getKey() {
-		return key;
-	}
-
-	@Override
-	public V getValue() {
-		return value;
-	}
-
-	@Override
-	public V setValue(V value) {
-		V oldValue = getValue();
-		this.value = value;
-		return oldValue;
-	}
-
-}

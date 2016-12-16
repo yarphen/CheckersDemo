@@ -26,13 +26,15 @@ public class SolverBot implements CheckersBot{
 			throw new IllegalArgumentException();
 		}
 		Step finalStep = solver.solve(board);
-		board.apply(finalStep);
-		System.out.println(finalStep );
-		try {
-			Thread.sleep(1000);
-		} catch (InterruptedException e) {
-			e.printStackTrace();
+		if (finalStep!=null){
+			board.apply(finalStep);
 		}
+		System.out.println(finalStep );
+//		try {
+//			Thread.sleep(1000);
+//		} catch (InterruptedException e) {
+//			e.printStackTrace();
+//		}
 		return finalStep;
 	}
 	/**
@@ -51,5 +53,5 @@ public class SolverBot implements CheckersBot{
 	public void show(Board board) {
 		renderer.render(board);
 	}
-	
+
 }

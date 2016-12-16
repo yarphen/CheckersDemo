@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.concurrent.TimeoutException;
 
 import checkers.pojo.board.Board;
 import checkers.pojo.checker.Checker;
@@ -16,19 +17,23 @@ import checkers.pojo.step.Step;
 import checkers.pojo.step.StepUnit;
 import checkers.utils.Validator;
 
-public class StepCollector {
+public class StepCollector2 {
 	private static final Point[] DIRECTIONS = {new Point(-1,-1),new Point(-1,1),new Point(1,-1),new Point(1, 1)};
-	public List<Entry<Step,Board>> getSteps(Board origin, CheckerColor color){
+	public StepListResult getSteps(Board origin, CheckerColor color, long searchLimit){
+		long endTime = System.currentTimeMillis()+searchLimit;
 		Board board = origin.clone();
 		List<Entry<Step,Board>> list = new LinkedList<Entry<Step,Board>>();
-		outer:for(Checker checker:origin.get(color)){
+		for(Checker checker:origin.get(color)){
 			int count=checker.getType()==CheckerType.SIMPLE?2:7;
 			for(int d = 1; d<=count; d++){
-				for(Point dir:DIRECTIONS){
+				inner:for(Point dir:DIRECTIONS){
 					try{
 						Position p = new Position(
 								checker.getPosition().getX()+dir.x*d,
 								checker.getPosition().getY()+dir.y*d);
+						if (p.getLetter()==null||p.getNumber()==null){
+							continue inner;
+						}
 						StepUnit stepUnit = new StepUnit(checker.getPosition(), p);
 						Step step = new Step();
 						step.addStep(stepUnit);
@@ -54,10 +59,14 @@ public class StepCollector {
 							continue;
 						}
 					}catch(IllegalArgumentException e){ }
+					if (System.currentTimeMillis()>endTime&&!list.isEmpty()){
+						System.err.println("Interrupted cause of timeout");
+						return new StepListResult(false, list);
+					}
 				}
 			}
 		}
-		return list;
+		return new StepListResult(true, list);
 	}
 	private void continueSteps(Step step, Board board, CheckerColor color, CheckerType type) {
 		outer:while(true){
